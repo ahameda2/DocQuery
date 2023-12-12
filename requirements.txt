@@ -1,0 +1,6 @@
+streamlit-chat
+huggingface-hub
+PyPDF2
+langchain
+transformers
+torch
