@@ -83,7 +83,7 @@ if uploaded_files:
 
     # Combine all texts and split into chunks
     combined_text = " ".join([doc.page_content for doc in documents])
-    DEVICE = "CUDA"  # Use "cuda" for GPU
+    DEVICE = "cuda"  # Use "cuda" for GPU
     embeddings = SentenceTransformerEmbeddings(
         model_name="all-MiniLM-L6-v2", model_kwargs={"device": DEVICE}
     )
