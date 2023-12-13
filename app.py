@@ -2,21 +2,25 @@ import streamlit as st
 from huggingface_hub import notebook_login
 from PyPDF2 import PdfReader
 import io
+import os
 from langchain.embeddings import HuggingFaceInstructEmbeddings, SentenceTransformerEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
+from langchain.llms import CTransformers
 from langchain.chains import ConversationalRetrievalChain
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from langchain.document_loaders import PyPDFLoader
+import tempfile
 import torch
 
 # Setting up the Streamlit page
-st.set_page_config(page_title="PDF Insights Explorer", page_icon="")
+st.set_page_config(page_title="Chat with Multiple PDFs", page_icon="📚")
 
 # Define a class to hold the text and metadata with the expected attributes
 class Document:
     def __init__(self, text, metadata=None):
         self.page_content = text
         self.metadata = metadata if metadata is not None else {}
+
 
 # Define the function to read and extract text from a PDF byte stream
 def read_pdf(file_stream):
@@ -35,8 +39,8 @@ if 'documents_processed' not in st.session_state:
 # Sidebar for Hugging Face Login and PDF Upload
 with st.sidebar:
     st.subheader("Hugging Face Login")
-    hf_token = st.text_input("Enter your Hugging Face Access Token", type="password")
-    submit_button = st.button("Authenticate")
+    hf_token = st.text_input("Enter your Hugging Face token", type="password")
+    submit_button = st.button("Login")
 
     if submit_button:
         try:
@@ -47,28 +51,39 @@ with st.sidebar:
 
     st.subheader("Your Documents")
     uploaded_files = st.file_uploader("Upload your PDFs here", accept_multiple_files=True, type='pdf')
-    process_button = st.button("Process PDFs")
+    if uploaded_files: 
+        documents = []
+        for file in uploaded_files:
+            file_extensions = os.path.splitext(file.name)[1]
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                temp_file.write(file.read())
+                temp_file_path = temp_file.name
+                
+            loader = None
+            if file_extensions == '.pdf':
+                loader = PyPDFLoader()
+            else:
+                st.error(f"Unsupported file type: {file_extensions}")
+                st.stop()
+                
+            if loader:
+                documents.extend(loader.load())
+                os.remove(temp_file_path)
+                
+    #process_button = st.button("Process PDFs")
 
 # Main Page Interface
-st.header("Chat with Your PDFs 📄")
+st.header("Chat with Multiple PDFs 📚")
 
-# Handling the PDF upload and processing
-if process_button and uploaded_files:
-    documents = []   # List to store document objects
-    for uploaded_file in uploaded_files:
-        # Read file as bytes
-        bytes_data = uploaded_file.getvalue()
-        file_name = uploaded_file.name
-        st.write(f"Reading {file_name}...")
-        text = read_pdf(io.BytesIO(bytes_data))
-        documents.append(Document(text))  # Add each document as an instance of Document class
+# Processing PDFs
+if uploaded_files:
 
     st.session_state.documents_processed = True
     st.success("PDFs processed successfully!")
 
     # Combine all texts and split into chunks
     combined_text = " ".join([doc.page_content for doc in documents])
-    DEVICE = "cuda"  # Use "cuda" for GPU
+    DEVICE = "CUDA"  # Use "cuda" for GPU
     embeddings = SentenceTransformerEmbeddings(
         model_name="all-MiniLM-L6-v2", model_kwargs={"device": DEVICE}
     )
@@ -80,19 +95,9 @@ if process_button and uploaded_files:
     db = Chroma.from_documents(split_text, embeddings, persist_directory="db")
     st.success("Embeddings processed and database created.")
 
-    # Initialize the model and tokenizer for conversational AI
-    model_name = "meta-llama/Llama-2-7b-hf"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-
-    # Function to generate a response from the model
-    def generate_response(prompt_text):
-        inputs = tokenizer.encode(prompt_text, return_tensors="pt")
-        outputs = model.generate(inputs, max_length=512, num_return_sequences=1)
-        response_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return response_text
-
-    # Set up the conversational retrieval chain
+    # Set up the conversational model and retrieval chain
+    model_id = "TheBloke/Llama-2-7B-Chat-GGUF"
+    model = CTransformers(model=model_id, max_new_tokens=50, model_file="llama-2-7b-chat.Q5_K_S.gguf")
     retriever = db.as_retriever(search_kwargs={'k': 2})
     st.session_state.chain = ConversationalRetrievalChain.from_llm(model, retriever, return_source_documents=True)
 
@@ -101,13 +106,10 @@ if st.session_state.documents_processed:
     st.subheader("Chat with AI")
     user_query = st.text_input("Ask a question about your documents:", key="user_query")
     if st.button("Submit"):
-        if user_query:
-            # Generating a response
-            response = generate_response(user_query)
-            st.write('Answer:', response)
+        if st.session_state.chain and user_query:
+            result = st.session_state.chain({'question': user_query, 'chat_history': []})
+            st.write('Answer:', result['answer'])
         else:
-            st.warning("Please enter a question.")
+            st.warning("Please process PDFs before asking questions.")
 else:
     st.write("Please upload and process PDFs to enable the chat feature.")
-
-#%%
