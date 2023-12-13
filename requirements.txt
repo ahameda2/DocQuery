@@ -2,6 +2,7 @@ streamlit
 streamlit-chat
 huggingface-hub
 PyPDF2
+pypdf
 langchain
 transformers
 torch
