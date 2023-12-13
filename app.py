@@ -61,7 +61,7 @@ with st.sidebar:
                 
             loader = None
             if file_extensions == '.pdf':
-                loader = PyPDFLoader()
+                loader = PyPDFLoader(temp_file_path)
             else:
                 st.error(f"Unsupported file type: {file_extensions}")
                 st.stop()
