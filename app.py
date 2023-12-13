@@ -2,7 +2,7 @@ import streamlit as st
 from huggingface_hub import notebook_login
 from PyPDF2 import PdfReader
 import io
-from langchain.embeddings import HuggingFaceInstructEmbeddings
+from langchain.embeddings import HuggingFaceInstructEmbeddings, SentenceTransformerEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 from langchain.chains import ConversationalRetrievalChain
@@ -69,7 +69,7 @@ if process_button and uploaded_files:
     # Combine all texts and split into chunks
     combined_text = " ".join([doc.page_content for doc in documents])
     DEVICE = "cuda"  # Use "cuda" for GPU
-    embeddings = HuggingFaceInstructEmbeddings(
+    embeddings = SentenceTransformerEmbeddings(
         model_name="hkunlp/instructor-large", model_kwargs={"device": DEVICE}
     )
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=30)
