@@ -4,4 +4,4 @@ PyPDF2
 langchain
 transformers
 torch
-langchain-community --upgrade
+langchain-community
