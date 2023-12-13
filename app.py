@@ -97,7 +97,7 @@ if uploaded_files:
 
     # Set up the conversational model and retrieval chain
     model_id = "TheBloke/Llama-2-7B-Chat-GGUF"
-    model = CTransformers(model=model_id, max_new_tokens=50, model_file="llama-2-7b-chat.Q5_K_S.gguf")
+    model = CTransformers(model=model_id, max_new_tokens=50, model_file="llama-2-7b-chat.Q5_K_S.gguf", device=DEVICE)
     retriever = db.as_retriever(search_kwargs={'k': 2})
     st.session_state.chain = ConversationalRetrievalChain.from_llm(model, retriever, return_source_documents=True)
 
