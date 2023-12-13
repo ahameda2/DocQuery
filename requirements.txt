@@ -1,3 +1,4 @@
+streamlit
 streamlit-chat
 huggingface-hub
 PyPDF2
