@@ -32,6 +32,7 @@ def read_pdf(file_stream):
         text += page.extract_text() or ""  # Adding a fallback for pages with no text
     return text
 
+
 # Initialize session state variables
 if 'chain' not in st.session_state:
     st.session_state.chain = None
@@ -110,14 +111,14 @@ if uploaded_files:
 
     # Initialize the model and tokenizer for conversational AI
     model_name = "meta-llama/Llama-2-7b-hf"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, torch_dtype='auto')
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, torch_dtype='float16')
     model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
 
     # Move the model to the specified device
     model.to(DEVICE).half()
 
     # Set up the text generation model
-    text_generator = pipeline('text-generation', model=model_name, device=DEVICE, max_new_tokens=50)
+    text_generator = pipeline('text-generation', model=model_name, device=DEVICE, max_new_tokens=20, max_length=128)
 
     # Set up the retriever
     retriever = db.as_retriever(search_kwargs={'k': 2})
