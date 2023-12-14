@@ -90,6 +90,8 @@ def get_device():
 
 DEVICE = get_device()
 
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
+
 # Processing PDFs
 if uploaded_files:
 
