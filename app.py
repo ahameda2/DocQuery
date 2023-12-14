@@ -11,6 +11,8 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.document_loaders import PyPDFLoader
 import tempfile
 import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+
 
 # Setting up the Streamlit page
 st.set_page_config(page_title="Chat with Multiple PDFs", page_icon="📚")
@@ -51,29 +53,41 @@ with st.sidebar:
 
     st.subheader("Your Documents")
     uploaded_files = st.file_uploader("Upload your PDFs here", accept_multiple_files=True, type='pdf')
-    if uploaded_files: 
+    if uploaded_files:
         documents = []
         for file in uploaded_files:
             file_extensions = os.path.splitext(file.name)[1]
             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                 temp_file.write(file.read())
                 temp_file_path = temp_file.name
-                
+
             loader = None
             if file_extensions == '.pdf':
                 loader = PyPDFLoader(temp_file_path)
             else:
                 st.error(f"Unsupported file type: {file_extensions}")
                 st.stop()
-                
+
             if loader:
                 documents.extend(loader.load())
                 os.remove(temp_file_path)
-                
+
     #process_button = st.button("Process PDFs")
 
 # Main Page Interface
 st.header("Chat with Multiple PDFs 📚")
+
+
+def get_device():
+    if torch.cuda.is_available():
+        return "cuda"
+    elif torch.backends.mps.is_available():
+        return "mps"  # For Apple Silicon GPUs
+    else:
+        return "cpu"
+
+
+DEVICE = get_device()
 
 # Processing PDFs
 if uploaded_files:
@@ -83,9 +97,8 @@ if uploaded_files:
 
     # Combine all texts and split into chunks
     combined_text = " ".join([doc.page_content for doc in documents])
-    DEVICE = "cuda"  # Use "cuda" for GPU
-    embeddings = SentenceTransformerEmbeddings(
-        model_name="all-MiniLM-L6-v2", model_kwargs={"device": DEVICE}
+    embeddings = HuggingFaceInstructEmbeddings(
+        model_name="hkunlp/instructor-large", model_kwargs={"device": DEVICE}
     )
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=30)
     split_text = text_splitter.split_documents(documents)
@@ -95,10 +108,28 @@ if uploaded_files:
     db = Chroma.from_documents(split_text, embeddings, persist_directory="db")
     st.success("Embeddings processed and database created.")
 
-    # Set up the conversational model and retrieval chain
-    model_id = "TheBloke/Llama-2-7B-Chat-GGUF"
-    model = CTransformers(model=model_id, max_new_tokens=50, model_file="llama-2-7b-chat.Q5_K_S.gguf", device=DEVICE)
+    # Initialize the model and tokenizer for conversational AI
+    model_name = "meta-llama/Llama-2-7b-hf"
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, torch_dtype='auto')
+    model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
+
+    # Move the model to the specified device
+    model.to(DEVICE)
+
+    # Convert the model to half-precision if using a GPU
+    if DEVICE == "cuda":
+        model.half()
+        # Monitor and potentially clear cache to free up memory
+        torch.cuda.empty_cache()
+
+    # Set up the text generation model
+    text_generator = pipeline('text-generation', model=model_name, device=DEVICE, max_new_tokens=50)
+
+    # Set up the retriever
     retriever = db.as_retriever(search_kwargs={'k': 2})
+
+    # Create the ConversationalRetrievalChain
+    # This step might need to be adjusted based on how ConversationalRetrievalChain is implemented
     st.session_state.chain = ConversationalRetrievalChain.from_llm(model, retriever, return_source_documents=True)
 
 # Chat interface
