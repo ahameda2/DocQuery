@@ -114,13 +114,7 @@ if uploaded_files:
     model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
 
     # Move the model to the specified device
-    model.to(DEVICE)
-
-    # Convert the model to half-precision if using a GPU
-    if DEVICE == "cuda":
-        model.half()
-        # Monitor and potentially clear cache to free up memory
-        torch.cuda.empty_cache()
+    model.to(DEVICE).half()
 
     # Set up the text generation model
     text_generator = pipeline('text-generation', model=model_name, device=DEVICE, max_new_tokens=50)
