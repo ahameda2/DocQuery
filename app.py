@@ -121,7 +121,7 @@ if uploaded_files:
     text_generator = pipeline('text-generation', model=model_name, device=DEVICE, max_new_tokens=20, max_length=128)
 
     # Set up the retriever
-    retriever = db.as_retriever(search_kwargs={'k': 2})
+    #retriever = db.as_retriever(search_kwargs={'k': 2})
 
     # Function to generate a response from the model
     def generate_response(prompt_text):
