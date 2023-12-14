@@ -115,6 +115,7 @@ if uploaded_files:
     model_name = "meta-llama/Llama-2-7b-hf"
     tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, torch_dtype='float16')
     model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
+    max_seq_length = 128
 
     # Move the model to the specified device
     model.to(DEVICE).half()
