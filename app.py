@@ -123,8 +123,15 @@ if uploaded_files:
     # Set up the retriever
     retriever = db.as_retriever(search_kwargs={'k': 2})
 
-    # Create the ConversationalRetrievalChain
-    # This step might need to be adjusted based on how ConversationalRetrievalChain is implemented
+    # Function to generate a response from the model
+    def generate_response(prompt_text):
+        inputs = tokenizer.encode(prompt_text, return_tensors="pt")
+        outputs = model.generate(inputs, max_length=512, num_return_sequences=1)
+        response_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return response_text
+
+    # Set up the conversational retrieval chain
+    retriever = db.as_retriever(search_kwargs={'k': 2})
     st.session_state.chain = ConversationalRetrievalChain.from_llm(model, retriever, return_source_documents=True)
 
 # Chat interface
