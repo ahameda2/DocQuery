@@ -114,11 +114,8 @@ if uploaded_files:
     # Initialize the model and tokenizer for conversational AI
     model_name = "meta-llama/Llama-2-7b-hf"
     tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token, torch_dtype='float16')
-    model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
+    model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token, torch_dtype='float16').to(DEVICE).half()
     max_seq_length = 128
-
-    # Move the model to the specified device
-    model.to(DEVICE).half()
 
     # Set up the text generation model
     text_generator = pipeline('text-generation', model=model_name, device=DEVICE, max_new_tokens=20, max_length=128)
@@ -132,7 +129,7 @@ if uploaded_files:
 
 # Chat interface
 if st.session_state.documents_processed:
-    st.subheader("Chat with AI")
+    st.subheader("Chat with your PDFs")
     user_query = st.text_input("Ask a question about your documents:", key="user_query")
     if st.button("Submit"):
         if st.session_state.chain and user_query:
